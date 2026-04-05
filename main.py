@@ -68,13 +68,19 @@ class MainProof():
         else:
             print(f"{key+1}. No contradiction\nInvalid")
 
+    def getClauseSet(self, clause): # increase efficiency of redundancy check by caching sets of clause parts
+        if clause not in self.clausesets:
+            parts = self.getSplit(clause)
+            self.clausesets[clause] = frozenset(parts)
+        return self.clausesets[clause]
+
     def redundancyCheck(self, clause):
         """Check if clause is subsumed by any existing clause"""
 
-        clauseParts = set(self.getSplit(clause)) # split the clause into a list of words'
+        clauseParts = self.getClauseSet(clause) # get the clause as a frozenset for faster comparison
         
         for existingClause in self.knowBase.values():
-            existingClauseParts = set(self.getSplit(existingClause)) # split the existing clause into a list of words
+            existingClauseParts = self.getClauseSet(existingClause) # get the existing clause as a frozenset for faster comparison
         
             if clauseParts == existingClauseParts: # check if the new clause is a subset of an existing clause
                 #print(f"Clause {clause} is the same as {existingClause}, skipping...")
@@ -83,21 +89,21 @@ class MainProof():
         return False
           
     def mirrorliteralCheck(self, clause):
-        """Check if clause contains both P and ~P (tautology)"""
         if not clause:
             return False
         
-        seen = set()
-        for lit in self.getSplit(clause):
-            # Compute the negation of current literal
-            neg = lit[1:] if lit.startswith('~') else '~' + lit
-            
-            # If negation already seen, this is a tautology
-            if neg in seen:
-                return True
-            
-            seen.add(lit)
-        return False            
+        parts = self.getSplit(clause)
+        pos_set = set()
+        neg_set = set()
+        
+        for lit in parts:
+            if lit.startswith('~'):
+                neg_set.add(lit[1:])
+            else:
+                pos_set.add(lit)
+        
+        # Check if any literal appears both positively and negatively
+        return bool(pos_set & neg_set)        
 
 
     def resolutionProcess(self, parentClause1, ruleNum1, clauseParts2, ruleNum2):
@@ -177,7 +183,7 @@ class MainProof():
         while i < size:
             #print(f"Processing clause {i}...") # print the clause that we are processing to verify that it is correct
             for j in range(1, i):
-                print(f"Resolving {i} and {j}...") # print the clauses that we are resolving to verify that it is correct
+                #print(f"Resolving {i} and {j}...") # print the clauses that we are resolving to verify that it is correct
                 clause1 = self.knowBase[i] # get the first clause from the rule base
                 clause2 = self.knowBase[j] # get the second clause from the rule base
                 clauseParts1 = self.getSplit(clause1)
@@ -204,9 +210,3 @@ if __name__ == "__main__":
     ans = main.mainProcess()
     main.kbprint(ans)
 
-
-
-
-
-
-#THE VALUES OF I AND J ARE SWAPPED IN THE RRESOLUTION PROCESS
